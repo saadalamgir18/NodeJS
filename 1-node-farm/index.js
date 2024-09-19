@@ -44,6 +44,7 @@ const tempProduct = fs.readFileSync(
 const tempCard = fs.readFileSync("./templates/template-card.html", "utf-8");
 const data = fs.readFileSync("./dev-data/data.json", "utf-8");
 const dataObj = JSON.parse(data);
+// TODO
 console.log(slugify("Fresh Avocado", { lower: true }));
 const slugs = dataObj.map((el) => slugify(el.productName, { lower: true }));
 console.log(slugs);
