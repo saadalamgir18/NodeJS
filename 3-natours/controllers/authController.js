@@ -61,6 +61,7 @@ exports.login = catchAsync(async (req, res, next) => {
 });
 
 exports.protect = catchAsync(async (req, res, next) => {
+  console.log(req.body);
   // 1. get ting the token and check if exists
   let token;
   if (
