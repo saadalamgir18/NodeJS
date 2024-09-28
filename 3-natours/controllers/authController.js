@@ -1,7 +1,7 @@
 const { promisify } = require('util');
 const jwt = require('jsonwebtoken');
 const User = require('./../models/userModel');
-const catchAsync = require('./../utils/catchAync');
+const catchAsync = require('../utils/catchAsync');
 const AppError = require('./../utils/appError');
 const sendEmail = require('./../utils/email');
 const email = require('surge/lib/middleware/email');
@@ -60,8 +60,17 @@ exports.login = catchAsync(async (req, res, next) => {
   createSendToken(user, 200, res);
 });
 
+exports.logout = (req, res) => {
+  const cookiesOption = {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  };
+  res.cookie('jwt', 'loggedOut', cookiesOption);
+  res.status(200).json({
+    status: 'success',
+  });
+};
 exports.protect = catchAsync(async (req, res, next) => {
-  console.log(req.body);
   // 1. get ting the token and check if exists
   let token;
   if (
@@ -69,6 +78,8 @@ exports.protect = catchAsync(async (req, res, next) => {
     req.headers.authorization.startsWith('Bearer')
   ) {
     token = req.headers.authorization.split(' ')[1];
+  } else if (req.cookies.jwt) {
+    token = req.cookies.jwt;
   }
   if (!token)
     next(new AppError('You are not logged in! Please log in to access.', 401));
@@ -95,6 +106,29 @@ exports.protect = catchAsync(async (req, res, next) => {
   // Grant access to protected route
   next();
 });
+
+// only for rendered pages
+exports.isLoggedIn = async (req, res, next) => {
+  if (req.cookies?.jwt) {
+    try {
+      const decoded = await promisify(jwt.verify)(
+        req.cookies.jwt,
+        process.env.JWT_SECRET,
+      );
+      const currentUser = await User.findById(decoded.id);
+      if (!currentUser) next();
+
+      if (currentUser.changedPasswordAfter(decoded.iat)) {
+        return next();
+      }
+      req.locals.user = currentUser;
+      return next();
+      next();
+    } catch (error) {
+      return next();
+    }
+  }
+};
 
 exports.restricttTo = (...roles) => {
   return (req, res, next) => {
